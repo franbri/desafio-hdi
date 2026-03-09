@@ -22,12 +22,12 @@ diccionario_imputacion = {
 
 class InputData(BaseModel):
     claim_id: int | None = None
-    marca_vehiculo: str
-    antiguedad_vehiculo: int
-    tipo_poliza: int
-    taller: int
-    partes_a_reparar: int
-    partes_a_reemplazar: int
+    marca_vehiculo: str | None = None
+    antiguedad_vehiculo: int | None = None
+    tipo_poliza: int | None = None
+    taller: int | None = None
+    partes_a_reparar: int | None = None
+    partes_a_reemplazar: int | None = None
 
 
 class MLModel:
@@ -58,11 +58,15 @@ def read_root():
 
 @app.get("/predict")
 def predict(inputdata: InputData):
-    if inputdata.tipo_poliza == 4:
-        return {"tiempo_en_taller": -1}
     X = inputdata.model_dump()
     df = pd.DataFrame(data=[X])
     dfout = df.copy(deep=True)
+    if inputdata.tipo_poliza == 4:
+        dfout["tiempo_en_taller"] = -1
+
+        dfout.to_csv("./log/results.csv", mode="a", header=True, sep="|", index=False)
+        output = json.loads(dfout.to_json(orient="records"))
+        return output
 
     out1 = app.state.model.pipeline1(df)
     out2 = app.state.model.pipeline2(out1)
@@ -84,7 +88,7 @@ def predict(inputdata: InputData):
     predict_data["tiempo_en_taller"] = prediction
     dfout["tiempo_en_taller"] = prediction
 
-    dfout.to_csv("/log/results.csv", mode="a", header=True, sep="|", index=False)
+    dfout.to_csv("./log/results.csv", mode="a", header=True, sep="|", index=False)
     output = json.loads(dfout.to_json(orient="records"))
     return output
 
@@ -113,8 +117,10 @@ async def predict_csv(request: Request):
     prediction = app.state.model.linnear_regression.predict(predict_data)
 
     predict_data["tiempo_en_taller"] = prediction
+    predict_data.loc[df["tipo_poliza"] == "4", "tiempo_en_taller"] = -1
+
     dfout["tiempo_en_taller"] = prediction
 
-    dfout.to_csv("/log/results.csv", mode="a", header=True, sep="|", index=False)
+    dfout.to_csv("./log/results.csv", mode="a", header=True, sep="|", index=False)
     output = json.loads(dfout.to_json(orient="records"))
     return output

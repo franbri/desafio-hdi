@@ -7,4 +7,4 @@ services:
     ports:
       - "8000:80"
     volumes:
-      - ./log/:/log/
+      - ./log/:/usr/src/app/log/
