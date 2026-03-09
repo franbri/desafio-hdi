@@ -23,7 +23,7 @@ El pipeline del modelo, creado y entregado por un Data Scientist, consta de cinc
 1. **pipeline_1.pkl**: Independiente.
 2. **pipeline_2.pkl**: Dependiente de *pipeline_1.pkl*.
 3. **pipeline_3.pkl**: Independiente.
-4. **pipeline_4.pkl**: Dependiente de *pipeline_2.pkl*.
+4. **pipeline_4.pkl**: Dependiente de *pipeline_3.pkl*.
 5. **pipeline_5.pkl**: Dependiente de *pipeline_3.pkl*.
 
 Estos pipelines se ejecutan con el método **pipeline(df)**. Donde;
