@@ -88,7 +88,7 @@ def predict(inputdata: InputData):
     predict_data["tiempo_en_taller"] = prediction
     dfout["tiempo_en_taller"] = prediction
 
-    dfout.to_csv("./log/results.csv", mode="a", header=True, sep="|", index=False)
+    dfout.to_csv("./log/results.csv", mode="a", header=False, sep="|", index=False)
     output = json.loads(dfout.to_json(orient="records"))
     return output
 
@@ -121,6 +121,6 @@ async def predict_csv(request: Request):
 
     dfout["tiempo_en_taller"] = prediction
 
-    dfout.to_csv("./log/results.csv", mode="a", header=True, sep="|", index=False)
+    dfout.to_csv("./log/results.csv", mode="a", header=False, sep="|", index=False)
     output = json.loads(dfout.to_json(orient="records"))
     return output
