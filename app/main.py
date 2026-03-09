@@ -85,7 +85,6 @@ async def predict_csv(request: Request):
     out2 = app.state.model.pipeline2(out1)
     out3 = app.state.model.pipeline3(df)
     out4 = app.state.model.pipeline4(out3)
-    print(out4)
     predict_data = pd.concat([out2["log_total_piezas"], out3["marca_vehiculo_encoded"], out4[["valor_vehiculo", "valor_por_pieza"]], df["antiguedad_vehiculo"]], axis=1)
     predict_data=predict_data.fillna(diccionario_imputacion)
     prediction = app.state.model.linnear_regression.predict(predict_data)
