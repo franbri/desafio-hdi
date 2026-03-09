@@ -1,9 +1,11 @@
 import dill
 import pandas as pd
 import numpy as np
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
- 
+from starlette.middleware.base import BaseHTTPMiddleware
+import json
+import io
 
 diccionario_imputacion = {
     'log_total_piezas': 1.4545,
@@ -34,8 +36,6 @@ class MLModel():
         self.pipeline4 = dill.load(open('./app/pipeline_4.pkl', 'rb'))
         self.pipeline5 = dill.load(open('./app/pipeline_5.pkl', 'rb'))
         self.linnear_regression = dill.load(open('./app/linnear_regression.pkl', 'rb'))
-    
-
 
 app = FastAPI()
 
@@ -50,46 +50,50 @@ async def startup_event():
 def read_root():
     return {"Hello": "World"}
 
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str | None = None):
-    return {"item_id": item_id, "q": q}
-
-@app.get("/datain")
-def datain(inputdata: InputData, q: str | None = None):
-    X = inputdata.model_dump()
-    return pd.DataFrame(data=[X])
-
 @app.get("/predict")
 def predict(inputdata: InputData):
+    if inputdata.tipo_poliza == 4:
+        return {"tiempo_en_taller": -1}
     X = inputdata.model_dump()
     df = pd.DataFrame(data=[X])
+    dfout = df.copy(deep=True) 
+
     out1 = app.state.model.pipeline1(df)
     out2 = app.state.model.pipeline2(out1)
     out3 = app.state.model.pipeline3(df)
     out4 = app.state.model.pipeline4(out3)
-    #out5 = app.state.model.pipeline5(out3)
-    df[["log_total_piezas","marca_vehiculo_encoded","valor_vehiculo","valor_por_pieza","antiguedad_vehiculo"]]
-    print(out4)
-    predict_data = pd.concat([out2["log_total_piezas"], out3["marca_vehiculo_encoded"], out4[["valor_vehiculo", "valor_por_pieza"]], df["antiguedad_vehiculo"]], axis=1)
-    predict_data.fillna(diccionario_imputacion)
-    prediction = app.state.model.linnear_regression.predict(predict_data)
-    predict_data["tiempo_en_talle"] = prediction
-    return predict_data.to_json(orient="records")
 
-@app.get("/predict_list")
-def predict_list(inputdata: list[InputData]):
-    print(inputdata)
-    X = inputdata.model_dump()
-    df = pd.DataFrame(data=[X])
+    predict_data = pd.concat([out2["log_total_piezas"], out3["marca_vehiculo_encoded"], out4[["valor_vehiculo", "valor_por_pieza"]], df["antiguedad_vehiculo"]], axis=1)
+    predict_data=predict_data.fillna(diccionario_imputacion)
+
+    prediction = app.state.model.linnear_regression.predict(predict_data)
+    predict_data["tiempo_en_taller"] = prediction
+    dfout["tiempo_en_taller"]=prediction
+
+    dfout.to_csv('results.csv', mode='a', header=True, sep="|", index=False)
+    output = json.loads(dfout.to_json(orient="records"))
+    return output
+
+@app.post("/predict_csv")
+async def predict_csv(request: Request):
+    csv = (await request.body()).decode("utf-8")
+    filelike = io.StringIO(str(csv))
+    df = pd.read_csv(filelike, delimiter="|")
+    dfout = df.copy(deep=True) 
+
     out1 = app.state.model.pipeline1(df)
     out2 = app.state.model.pipeline2(out1)
     out3 = app.state.model.pipeline3(df)
-    out4 = app.state.model.pipeline4(out2)
-    out5 = app.state.model.pipeline5(out3)
-    predict_data = pd.concat([out4, out5], axis=1)
-    predict_data.fillna(diccionario_imputacion)
+    out4 = app.state.model.pipeline4(out3)
+    print(out4)
+    predict_data = pd.concat([out2["log_total_piezas"], out3["marca_vehiculo_encoded"], out4[["valor_vehiculo", "valor_por_pieza"]], df["antiguedad_vehiculo"]], axis=1)
+    predict_data=predict_data.fillna(diccionario_imputacion)
     prediction = app.state.model.linnear_regression.predict(predict_data)
 
-    print(prediction)
-    return prediction.to_json(orient="records")
+    predict_data["tiempo_en_taller"] = prediction
+    dfout["tiempo_en_taller"]=prediction
+
+    dfout.to_csv('results.csv', mode='a', header=True, sep="|", index=False)
+    output = json.loads(dfout.to_json(orient="records"))
+    return output
+
